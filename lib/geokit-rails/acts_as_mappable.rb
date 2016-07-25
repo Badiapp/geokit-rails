@@ -117,12 +117,22 @@ module Geokit
         # Add bounding box to speed up SQL request.
         bounds = formulate_bounds_from_distance(
           options,
-          normalize_point_to_lat_lng(options[:origin]), 
+          normalize_point_to_lat_lng(options[:origin]),
           options[:units] || default_units)
         with_latlng.where(bound_conditions(bounds)).
           where(distance_conditions(options))
       end
       alias inside within
+      def within_with_distance(distance, options = {})
+        options[:within] = distance
+
+        # Have to copy the options because `build_distance_sql` will delete them.
+        conditions = distance_conditions(options.dup)
+        sql = build_distance_sql(options)
+        self.select(
+          "#{sql} AS #{self.distance_column_name}, #{table_name}.*"
+        ).where(conditions)
+      end
 
       def beyond(distance, options = {})
         options[:beyond] = distance
@@ -135,6 +145,15 @@ module Geokit
         options[:range] = range
         #geo_scope(options)
         where(distance_conditions(options))
+      end
+
+      def in_range_with_distance(range, options = {})
+        options[:range] = range
+        conditions = distance_conditions(options.dup)
+        sql = build_distance_sql(options)
+        self.select(
+          "#{sql} AS #{self.distance_column_name}, #{table_name}.*"
+        ).where(conditions)
       end
 
       def in_bounds(bounds, options = {})
@@ -164,6 +183,16 @@ module Geokit
 
       def farthest(options = {})
         by_distance({:reverse => true}.merge(options)).limit(1)
+      end
+
+      # Copied from geokit-rails/lib/geokit-rails/acts_as_mappable.rb
+      # Extract distance_sql building to method `build_distance_sql`.
+      def build_distance_sql(options)
+        origin  = extract_origin_from_options(options)
+        units   = extract_units_from_options(options)
+        formula = extract_formula_from_options(options)
+
+        distance_sql(origin, units, formula)
       end
 
       #def geo_scope(options = {})
