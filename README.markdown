@@ -15,6 +15,37 @@ Geokit Rails
 * If you'd like to **ask a general question**, use GitHub issues.
 * If you **want to contribute**, submit a pull request.
 
+## FORK INFORMATION
+
+Added two new methods with missing distance field. You can now order your results by distance.
+
+```ruby
+def within_with_distance(distance, options = {})
+  options[:within] = distance
+  conditions = distance_conditions(options.dup)
+  sql = build_distance_sql(options)
+  self.select(
+    "#{sql} AS #{self.distance_column_name}, #{table_name}.*"
+  ).where(conditions)
+end
+```
+
+``` ruby
+def in_range_with_distance(range, options = {})
+  options[:range] = range
+  conditions = distance_conditions(options.dup)
+  sql = build_distance_sql(options)
+  self.select(
+    "#{sql} AS #{self.distance_column_name}, #{table_name}.*"
+  ).where(conditions)
+end
+```
+Example of usage.
+
+```ruby
+Location.in_range_with_distance(min_distance..max_distance, origin: origin).order('distance asc')
+```
+
 ## INSTALLATION
 
 Geokit for Rails consists of a generic Gem ([geokit](https://github.com/geokit/geokit)) and a Rails plugin ([geokit-rails](https://github.com/geokit/geokit-rails)).
